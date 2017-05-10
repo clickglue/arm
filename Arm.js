@@ -70,7 +70,7 @@ var arm = {
     },
     addOrder: function (angles) {
         this.orderArr.push(angles);
-        this.monitor({ stepper1: this.currentPos[0], stepper2: this.currentPos[1], movesWaiting: this.orderArr.length })
+        this.monitor({ stepper1: angles[0], stepper2: angles[1], movesWaiting: this.orderArr.length })
     }
 }
 

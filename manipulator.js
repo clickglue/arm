@@ -41,9 +41,7 @@ module.exports = function (server) {
       } else {
         arm.addOrder([+val - 90, currentAngleSlider2])
       }
-      //setServo(0, val);
       angles[0] = val * deg2rad;
-      socket.emit('draw', forwardKinematics(angles)); // forward kinematics
     });
 
     socket.on('slider2', function (val) {
@@ -54,18 +52,15 @@ module.exports = function (server) {
         arm.addOrder([currentAngleSlider1 - 90, val])
       }
       angles[1] = val * deg2rad;
-      socket.emit('draw', forwardKinematics(angles)); // forward kinematics
     });
 
     socket.on('click', inverseKinematics);
 
     socket.on('moveArm', function () {
       arm.draw();
-      //socket.emit('draw', forwardKinematics(angles));
     })
 
     socket.on('click', function (pt) {
-      socket.emit('draw', forwardKinematics(angles));
       var anglesInDegrees = [angles[0] * rad2deg, angles[1] * rad2deg];
       arm.addOrder(anglesInDegrees);
       socket.emit('orderArrLength', arm.orderArr.length);
