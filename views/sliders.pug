@@ -3,6 +3,7 @@ html
   head
     title Manny the Manipulator
     link(rel='stylesheet', href='/stylesheets/style.css')
+    link(rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/muicss/0.9.13/css/mui.css')
   body
     h2 Manny the Manipulator
 
@@ -11,18 +12,26 @@ html
     .ee
       span End Effector Position:
       span#ee-val
-
+      br
+      br
+      span#orderArr 0
+      |  moves waiting.
     .slider.slider-1
       h3 Joint 1:
         span.slider1-val 90
         | &nbsp;&deg;
-      input#slider1(type='range', value='90', min='10', max='170')
+      input#slider1(type='range', value='90', min='45', max='135')
     .slider.slider-2
       h3 Joint 2:
         span.slider2-val 0
         | &nbsp;&deg;
-      input#slider2(type='range', value='0', min='-80', max='80')
+      input#slider2(type='range', value='0', min='-90', max='90')
+    .button.button-1
+      h3
+      button#button1 move arm
+      button#button2 reset
 
     script(src="/socket.io/socket.io.js")
     script(src="/js/ender.min.js")
     script(src="/js/drawbot.js")
+    

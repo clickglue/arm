@@ -1,119 +1,86 @@
-// [RDV 5/26/13] at some point, this should probably be its own module... but for now, we'll roll with it :)
-
 var vektor = require('vektor'),
   h = vektor.homog,
   v = vektor.vector,
-  r = vektor.rotate,
-  five = require('johnny-five');
-  // _ = require('underscore')._;
+  r = vektor.rotate;
+var five = require('johnny-five');
+var board = new five.Board({
+  repl: false,
+});
+var arm = require('./Arm');
+var armData = {};
 
-var isBoardConnected = false;
-var array;
-
-var includeBoard = function(board, socket) {
-  board.on("info", function(e) {
-    console.log(e)
-  })
-
-
-  board.on("ready", function() {
-    isBoardConnected = true;
-
-    var upper = five.Servo({
-      pin: 9,
-      range: [10, 170]
-    });
-
-    var lower = five.Servo({
-      pin: 10,
-      range: [10, 170]
-    });
-
-    var led = five.Led(13);
-
-    array = new five.Servos([upper, lower]);
-    this.repl.inject({
-      array: array,
-      led: led
-    });
-    array[0].center();
-    array[1].center();
-  });
-};
-
-var setServo = function(servo, val) {
-  if (isBoardConnected) {
-    array[servo].to(val);
-  } else {
-    // do nothing
-  }
-};
-
-module.exports = function(server) {
+module.exports = function (server) {
   var io = require('socket.io')(server);
 
-  var LINK_LENGTHS = [100, 100],
+  var LINK_LENGTHS = [84, 103],
     MAX_LENGTH = 200,
     ORIGIN = new v([250, 250, 0]),
-    endEff;
+    endEff,
+    currentAngleSlider1 = 90,
+    currentAngleSlider2 = 0;
 
-  function setJoints(angles) { // forward kinematics
-    // var degs = _.map(angles, function (ang) {
-    //   return ang * 180 / Math.PI;
-    // });
-
-    var joints = [],
-      Tx = h(r.RotX(Math.PI), ORIGIN),
-      Tzx = Tx.dot(h(r.RotZ(Math.PI), 0)),
-      Txzx = Tzx.dot(h(r.RotX(Math.PI), 0)),
-      T1 = Txzx.dot(h(r.RotZ(angles[0]), 0)),
-      T2 = T1.dot(h(r.RotZ(angles[1]), new v([LINK_LENGTHS[0], 0, 0]))),
-      T3 = T2.dot(h(0, new v([LINK_LENGTHS[1], 0, 0])));
-
-    endEff = T3.getPoint();
-
-    joints.push(T1.getPoint(), T2.getPoint(), endEff);
-
-    return joints;
-  }
-
-  io.on('connection', function(socket) {
-    var deg2rad = Math.PI / 180,
-      rad2deg = 180 / Math.PI;
-
+  io.on('connection', function (socket) {
+    var deg2rad = Math.PI / 180, rad2deg = 180 / Math.PI;
     var angles = [90 * deg2rad, 0 * deg2rad];
 
-    socket.emit('init', setJoints(angles, ORIGIN)); // forward kinematics
+    socket.emit('init', forwardKinematics(angles, ORIGIN)); // forward kinematics
 
-    // set up the board and servos
-    var board;
-    board = new five.Board();
-
-    board.on("info", function(e) {
-      if (!e.message.match("Looking for connected device")) {
-        includeBoard(board, socket);
+    board.on('ready', function () {
+      arm.init(five);
+      arm.monitor = function (data) {
+        armData = data;
+        socket.emit('orderArrLength', armData.movesWaiting);
+        socket.emit('draw', forwardKinematics([armData.stepper1*deg2rad, armData.stepper2*deg2rad]))
       }
     });
 
-    socket.on('slider1', function(val) {
-      // console.log('slide1: ', val);
-      setServo(0, val);
+    socket.on('slider1', function (val) {
+      currentAngleSlider1 = val;
+      if (arm.orderArr > 0) {
+        arm.addOrder([+val - 90, (arm.orderArr[arm.orderArr.length - 1][1])])
+      } else {
+        arm.addOrder([+val - 90, currentAngleSlider2])
+      }
+      //setServo(0, val);
       angles[0] = val * deg2rad;
-      socket.emit('draw', setJoints(angles)); // forward kinematics
+      socket.emit('draw', forwardKinematics(angles)); // forward kinematics
     });
 
-    socket.on('slider2', function(val) {
-      // console.log(val, parseInt(val, 10)+90)
-      setServo(1, +val + 90);
+    socket.on('slider2', function (val) {
+      currentAngleSlider2 = val;
+      if (arm.orderArr > 0) {
+        arm.addOrder([(arm.orderArr[arm.orderArr.length - 1][0]), val])
+      } else {
+        arm.addOrder([currentAngleSlider1 - 90, val])
+      }
       angles[1] = val * deg2rad;
-      socket.emit('draw', setJoints(angles)); // forward kinematics
+      socket.emit('draw', forwardKinematics(angles)); // forward kinematics
     });
 
-    socket.on('click', function(pt) { // inverse kinematics
-      // var pt_v = new v(pt);
-      // var distToEE = pt_v.distanceFrom(endEff);
+    socket.on('click', inverseKinematics);
 
-      var x = ORIGIN.x - pt.x,
+    socket.on('moveArm', function () {
+      arm.draw();
+      //socket.emit('draw', forwardKinematics(angles));
+    })
+
+    socket.on('click', function (pt) {
+      socket.emit('draw', forwardKinematics(angles));
+      var anglesInDegrees = [angles[0] * rad2deg, angles[1] * rad2deg];
+      arm.addOrder(anglesInDegrees);
+      socket.emit('orderArrLength', arm.orderArr.length);
+      socket.emit('setSlide', angles);
+    })
+
+    socket.on('reset', function () {
+      arm.orderArr = [[0, 0]];
+      arm.draw();
+      console.log('rest');
+    })
+
+    function inverseKinematics(pt) { // inverse kinematics
+      var
+        x = ORIGIN.x - pt.x,
         y = ORIGIN.y - pt.y,
         x_sq = x * x,
         y_sq = y * y,
@@ -137,13 +104,19 @@ module.exports = function(server) {
       // value of th1 from www.site.uottawa.ca/~petriu/generalrobotics.org-ppp-Kinematics_final.ppt‎
       th1 = angles[0] = Math.asin((y * (l1 + l2 * cth2) - x * l2 * sth2) / (x_sq + y_sq));
 
-      socket.emit('setSlide', angles);
+    }
 
-      socket.emit('draw', setJoints(angles));
-      setServo(0, angles[0] * rad2deg);
-      setServo(1, angles[1] * rad2deg);
-    // array[0].to(angles[0] * rad2deg);
-    // array[1].to(angles[1] * rad2deg + 90);
-    });
+    function forwardKinematics(angles) { // forward kinematics
+      var joints = [],
+        Tx = h(r.RotX(Math.PI), ORIGIN),
+        Tzx = Tx.dot(h(r.RotZ(Math.PI), 0)),
+        Txzx = Tzx.dot(h(r.RotX(Math.PI), 0)),
+        T1 = Txzx.dot(h(r.RotZ(angles[0]), 0)),
+        T2 = T1.dot(h(r.RotZ(angles[1]), new v([LINK_LENGTHS[0], 0, 0]))),
+        T3 = T2.dot(h(0, new v([LINK_LENGTHS[1], 0, 0]))),
+        endEff = T3.getPoint();
+      joints.push(T1.getPoint(), T2.getPoint(), endEff);
+      return joints;
+    }
   });
 };
