@@ -1,5 +1,5 @@
-<<<<<<< HEAD
-Manny the Manipulator
+Arm the Artist
+Based on code by Rachel Velasquez
 ===
 
 This is Manny. 
