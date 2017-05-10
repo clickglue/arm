@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Manny the Manipulator
 ===
 
@@ -22,3 +23,7 @@ npm start
 You'll need a robot attached, and can view the browser-side bits at http://localhost:3000.
 
 Watch a video of Manny on the move: http://youtu.be/2oNqa-cL_ZQ
+=======
+# arm
+scara_arm
+>>>>>>> 49207d0df734bbd6937865245d06ffb1ee141262
