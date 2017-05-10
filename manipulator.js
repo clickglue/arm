@@ -23,23 +23,24 @@ module.exports = function (server) {
     var deg2rad = Math.PI / 180, rad2deg = 180 / Math.PI;
     var angles = [90 * deg2rad, 0 * deg2rad];
 
-    socket.emit('init', forwardKinematics(angles, ORIGIN)); // forward kinematics
+    socket.emit('draw', forwardKinematics(angles))
 
     board.on('ready', function () {
       arm.init(five);
       arm.monitor = function (data) {
         armData = data;
         socket.emit('orderArrLength', armData.movesWaiting);
-        socket.emit('draw', forwardKinematics([armData.stepper1*deg2rad, armData.stepper2*deg2rad]))
+        socket.emit('draw', forwardKinematics([armData.stepper1 * deg2rad, armData.stepper2 * deg2rad]))
+        socket.emit('setSlide', angles);
       }
     });
 
     socket.on('slider1', function (val) {
       currentAngleSlider1 = val;
       if (arm.orderArr > 0) {
-        arm.addOrder([+val - 90, (arm.orderArr[arm.orderArr.length - 1][1])])
+        arm.addOrder([+val, (arm.orderArr[arm.orderArr.length - 1][1])])
       } else {
-        arm.addOrder([+val - 90, currentAngleSlider2])
+        arm.addOrder([+val, currentAngleSlider2])
       }
       angles[0] = val * deg2rad;
     });
@@ -49,7 +50,7 @@ module.exports = function (server) {
       if (arm.orderArr > 0) {
         arm.addOrder([(arm.orderArr[arm.orderArr.length - 1][0]), val])
       } else {
-        arm.addOrder([currentAngleSlider1 - 90, val])
+        arm.addOrder([currentAngleSlider1, val])
       }
       angles[1] = val * deg2rad;
     });
@@ -63,14 +64,14 @@ module.exports = function (server) {
     socket.on('click', function (pt) {
       var anglesInDegrees = [angles[0] * rad2deg, angles[1] * rad2deg];
       arm.addOrder(anglesInDegrees);
-      socket.emit('orderArrLength', arm.orderArr.length);
-      socket.emit('setSlide', angles);
+      //socket.emit('orderArrLength', arm.orderArr.length);
+
     })
 
     socket.on('reset', function () {
-      arm.orderArr = [[0, 0]];
+      arm.orderArr = [];
+      arm.addOrder([0, 0])
       arm.draw();
-      console.log('rest');
     })
 
     function inverseKinematics(pt) { // inverse kinematics

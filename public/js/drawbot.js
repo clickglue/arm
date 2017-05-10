@@ -3,12 +3,14 @@ var canvas = document.getElementById("robot"),
   socket = io(),
   moveEE = false;
 
+/*
 socket.on('init', function (joints) {
-  $('#ee-val').text(" ( " + joints[2].x.toFixed(2) + " , " + joints[2].y.toFixed(2) + " )")
+  $('#ee-val').text(" ( " + joints[2].x.toFixed(0) + " , " + joints[2].y.toFixed(0) + " )")
 })
+*/
 
 socket.on('draw', function (joints) {
-  $('#ee-val').text(" ( " + joints[2].x.toFixed(2) + " , " + joints[2].y.toFixed(2) + " )")
+  $('#ee-val').text(" ( " + joints[2].x.toFixed(0) + " , " + joints[2].y.toFixed(0) + " )")
 });
 
 socket.on('orderArrLength', function (orderArr) {
@@ -75,7 +77,7 @@ function drawManipulator(joints) {
   drawPoint(joints[j], 'yellow');
 }
 
-socket.on('init', function (joints) { return drawManipulator(joints); });
+//socket.on('init', function (joints) { return drawManipulator(joints); });
 socket.on('draw', function (joints) { return drawManipulator(joints); });
 
 getMouseClick = function (ev) {

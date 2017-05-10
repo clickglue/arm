@@ -2,7 +2,7 @@
 var arm = {
     scale: 44,
     orderArr: [],
-    currentPos: [0, 0],
+    currentPos: [],
     servo: {},
     stepper1: {},
     stepper2: {},
@@ -64,6 +64,7 @@ var arm = {
             this.monitor({ stepper1: this.currentPos[0], stepper2: this.currentPos[1], movesWaiting: this.orderArr.length })
             this.runSteppers()
         } else {
+            this.monitor({ stepper1: this.currentPos[0], stepper2: this.currentPos[1], movesWaiting: this.orderArr.length })
             console.log('no more orders');
             return 'no orders'
         }
